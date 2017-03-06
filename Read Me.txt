@@ -1,0 +1,50 @@
+Hookup the matrice to linux computer ( that will be controlling the matrice ) and the windows computer running the simulator
+
+start the simulator on the windows computer
+
+put the matrice controller in 'F' mode
+
+allow the simulator to find and set home
+
+on the linux computer:
+
+	- in a terminal cd to catkin_ws
+		- source devel/setup.bash
+		- roslaunch dji_sdk sdk_manifold.launch
+
+	- in a NEW terminal cd to catkin_ws
+		- catkin_make
+		- source devel/setup.bash
+		- rosrun rags_dji_side rags_dji_side.py
+
+
+Then a few things should happen
+	- The matrice should take-off fly away for a few seconds and then return home to land
+	- The terminal running 'rags_dji_side.py' should be printing a lot of info.
+		- It's printing location in local/global frames, rc input
+
+	- You should be able to go through my code (/script/rags_dji_side.py) and see how the mission was created.
+
+Subscribing to more topics
+	- To setup subscribers you will need to start a new terminal
+		- rostopic list
+		- pick a topic you want to subscribe to; e.g. "/dji_sdk/odometry"
+		- get topic info
+			- rostopic info /dji_sdk/odometry
+			- gives type nav_msgs/Odometry
+		- get topic structure
+			- rostopic echo /dji_sdk/odometry
+	
+	- in your python script
+		- import library in script
+			- nav_msgs.msg import Odometry
+		- define subscriber
+			- rospy.Subscriber("/dji_sdk/odometry", Odometry, callback_odom)
+		- write callback function
+			- def callback_odom(data):
+				print("got odom position: ", data.pose.pose.position )
+				print("got odom orientation: ", data.pose.pose.orientation )
+
+
+				
+

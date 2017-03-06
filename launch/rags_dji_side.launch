@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="rags_dji_side" type="rags_dji_side" name="rags_dji_side" output="screen">
+	</node>
+</launch>
