@@ -1,3 +1,22 @@
+Thus has been tested on ubuntu 14.04 and 16.04 and ros indigo and kinetic
+
+
+before downloading this file!!!!
+
+	move to your workspace source folder, this holds all of your projects
+	$ cd catkin_ws/src
+
+	clone in my project, this project
+	$ git clone https://github.com/smithan7/bare_bones_ros_dji_script.git
+
+	move to the scripts folder
+	$ cd bare_bones_ros_dji_script/scripts
+
+	make the script executable
+	$ chmod +x rags_dji_side.py
+
+it's now ready to run!
+
 Hookup the matrice to linux computer ( that will be controlling the matrice ) and the windows computer running the simulator
 
 start the simulator on the windows computer
@@ -9,13 +28,13 @@ allow the simulator to find and set home
 on the linux computer:
 
 	- in a terminal cd to catkin_ws
-		- source devel/setup.bash
-		- roslaunch dji_sdk sdk_manifold.launch
+		- $ source devel/setup.bash
+		- $ roslaunch dji_sdk sdk_manifold.launch
 
 	- in a NEW terminal cd to catkin_ws
-		- catkin_make
-		- source devel/setup.bash
-		- rosrun rags_dji_side rags_dji_side.py
+		- $ catkin_make
+		- $ source devel/setup.bash
+		- $ rosrun rags_dji_side rags_dji_side.py
 
 
 Then a few things should happen
