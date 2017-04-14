@@ -1,0 +1,35 @@
+<launch>
+
+   <node pkg="tf" type="static_transform_publisher" name="map_to_world" args="0 0 0 0 0 0  /map /world 100" />
+
+
+   <!-- launch the zed camera -->
+   <!--node name="zed_wrapper" pkg="zed" type="zed_wrapper"-->
+   <!--/node-->
+
+
+   <!-- launch depthimage to laserscan -->
+   <node name="depthimage_to_laserscan" pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" > 
+		<param name="output_frame_id" value="quad"/>
+		<remap from="image" to="/zed/depth/depth_registered"/>
+   </node>
+
+
+
+   <!-- launch gmapping -->
+   <node name="slam_gmapping" pkg="gmapping" type="slam_gmapping" > 
+		<param name="base_frame " value="quad"/>
+		<param name="odom_frame " value="/dji_sdk/odometry"/>
+		<param name="xmin" value="-400"/>
+		<param name="ymin" value="-400"/>
+		<param name="xmax" value="400"/>
+		<param name="ymax" value="400"/>
+		<param name="delta" value="0.25"/>
+
+		<remap from="scan" to="/scan"/>
+   </node>
+
+   <node name="rags_dji_side" pkg="rags_dji_side" type="rags_dji_side.py" output="screen">
+   </node>
+
+</launch>

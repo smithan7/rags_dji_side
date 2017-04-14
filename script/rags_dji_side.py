@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
+from utils import *
+from rags_quad import rags_quad
+from fmm import FMM
+
 from dji_sdk.dji_drone import DJIDrone
 import dji_sdk.msg 
 
 import rospy
 from std_msgs.msg import String
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, OccupancyGrid
+from geometry_msgs.msg import Pose
 from dji_sdk.msg import GlobalPosition
 from dji_sdk.msg import TransparentTransmissionData
 from dji_sdk.msg import RCChannels
@@ -13,75 +18,17 @@ from dji_sdk.msg import RCChannels
 import time
 import sys
 import math
-
-
-def callback_odom(data):
-    print("got odom position: ", data.pose.pose.position )
-    print("got odom orientation: ", data.pose.pose.orientation )
-
-def callback_gps(data):
-    print("got lat/lon: ", data.latitude, " / ", data.longitude )
-    print("got alt / height: ", data.altitude, " / ", data.height )
-
-def callback_rc(data):
-    print("got rc roll / pitch: ", data.roll, " / ", data.pitch )
-    print("got rc yaw / throttle: ", data.yaw, " / ", data.throttle )
-    print("got rc mode: ", data.mode )
+	
+	
 
 def main():
 
-    # setup subscribers
-    
-    rospy.Subscriber("/dji_sdk/odometry", Odometry, callback_odom)
-    rospy.Subscriber("/dji_sdk/global_position", GlobalPosition, callback_gps)
-    rospy.Subscriber("/dji_sdk/rc_channels", RCChannels, callback_rc)
-    
-    # setup subscribers for these for tasks
-    #/dji_sdk/drone_task_action/cancel
-    #/dji_sdk/drone_task_action/feedback
-    #/dji_sdk/drone_task_action/goal
-    #/dji_sdk/drone_task_action/result
-    #/dji_sdk/drone_task_action/status
+	use_rags = False
+	
+	rags_Q = rags_quad( use_rags )	
 
-    # for global navigation via gps
-    #/dji_sdk/global_position_navigation_action/cancel
-    #/dji_sdk/global_position_navigation_action/feedback
-    #/dji_sdk/global_position_navigation_action/goal
-    #/dji_sdk/global_position_navigation_action/result
-    #/dji_sdk/global_position_navigation_action/status
 
-    # for local navigation
-    #/dji_sdk/local_position_navigation_action/cancel
-    #/dji_sdk/local_position_navigation_action/feedback
-    #/dji_sdk/local_position_navigation_action/goal
-    #/dji_sdk/local_position_navigation_action/result
-    #/dji_sdk/local_position_navigation_action/status
-
-    # initialize drone
-    drone = DJIDrone()
-
-    # run mission
-    drone.request_sdk_permission_control() #Request to obtain control
-    #drone.release_sdk_permission_control() #Release control
-    drone.takeoff() # Takeoff
-    time.sleep(5)    
-    #drone.landing() # Landing
-    #drone.gohome() # Go home
-    # drone.attitude_control(0x40, 0, 2, 0, 0) # Attitude control sample
-    drone.local_position_navigation_send_request(-100, -100, 100) # Local Navi Test      
-    #drone.global_position_navigation_send_request(22.535, 113.95, 100) # GPS Navi Test 
-    #newWaypointList = [ # Waypoint List Navi Test 
-    #    dji_sdk.msg.Waypoint(latitude = 22.535, longitude = 113.95, altitude = 100, staytime = 5, heading = 0),
-    #    dji_sdk.msg.Waypoint(latitude = 22.535, longitude = 113.96, altitude = 100, staytime = 0, heading = 90),
-    #    dji_sdk.msg.Waypoint(latitude = 22.545, longitude = 113.96, altitude = 100, staytime = 4, heading = -90),
-    #    dji_sdk.msg.Waypoint(latitude = 22.545, longitude = 113.96, altitude = 10, staytime = 2, heading = 180),
-    #    dji_sdk.msg.Waypoint(latitude = 22.525, longitude = 113.93, altitude = 50, staytime = 0, heading = -180)]
-    #drone.waypoint_navigation_send_request(newWaypointList)
-    time.sleep(5)
-    drone.gohome()
-
-    # spin() simply keeps python from exiting until this node is stopped
-    rospy.spin()
+	rospy.spin()
 
 
 if __name__ == "__main__":
