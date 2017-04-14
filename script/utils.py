@@ -3,7 +3,7 @@
 
 import math
 
-def GPS_to_ground( lati, longti, origin_lati, origin_longti): # from lat/lon to quads local map in meters
+def GPS_to_local( lati, longti, origin_lati, origin_longti): # from lat/lon to quads local map in meters
 	C_EARTH = 6378137.0
 	dlati = lati-origin_lati
 	dlongti= longti-origin_longti
@@ -12,7 +12,7 @@ def GPS_to_ground( lati, longti, origin_lati, origin_longti): # from lat/lon to 
 
 	return [x, y]
 
-def ground_to_GPS(x, y, origin_lati, origin_longti): # from quads local map in meters to lat/lon
+def local_to_GPS(x, y, origin_lati, origin_longti): # from quads local map in meters to lat/lon
 	C_EARTH = 6378137.0
 	dlati = x / C_EARTH
 	lati = d_lati + origin_lati
@@ -21,25 +21,14 @@ def ground_to_GPS(x, y, origin_lati, origin_longti): # from quads local map in m
 
 	return [lati, longti]
 
-def ground_to_map( x, y, resolution ): # from quads local map in meters to gmapping's map
-	ix = x / resolution
-	iy = y / resolution
+def local_to_map( x, y, offset_x, offset_y, resolution ): # from quads local map in meters to gmapping's map
+	ix = (x-offset_x) / resolution
+	iy = (y-offset_y) / resolution
 	return [ix, iy]
 
-def mat_to_GPS( mat_size, map_corners, point): # this is for converting from the img to lat/lon
-	mx = float(point[0]) / mat_size[0]
-	my = point[1] / mat_size[1]
-
-	lat_lon = []
-	lat_lon.append( map_corners[1] + my*(map_corners[3] - map_corners[1]) )
-	lat_lon.append( map_corners[0] + mx*(map_corners[2] - map_corners[0]) )
-	
-	return lat_lon
-
-
-def map_to_ground( ix, iy, resolution ): # from gmapping map to quads map in meters
-	x = ix * resolution
-	y = iy * resolution
+def map_to_local( ix, iy, offset_x, offset_y, resolution ): # from gmapping map to quads map in meters
+	x = ix * resolution + offset_x
+	y = iy * resolution + offset_y
 	return [x, y]
 
 def quaternions_to_RPY( q ):
@@ -66,7 +55,7 @@ def heading_from_a_to_b( a_lat, a_lon, b_lat, b_lon ):
 	return compass_bearing
 
 def distance_from_a_to_b( a_lat, a_lon, b_lat, b_lon ):
-	R = 6373.0
+	R = 6378137.0 # radius of the earth in meters
 
 	lat1 = math.radians(a_lat)
 	lon1 = math.radians(a_lon)
@@ -79,5 +68,5 @@ def distance_from_a_to_b( a_lat, a_lon, b_lat, b_lon ):
 	a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
 	c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-	distance = R * c
+	distance = R * c # in meters
 	return distance

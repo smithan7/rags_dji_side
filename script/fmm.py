@@ -16,25 +16,32 @@ class FMM(object):
 
     oVec = []
 
-    cell2Meter = 0.5
+    cell2Meter = 0.25
 
     crash_radius_m = 0.5
     crash_radius_c = crash_radius_m / cell2Meter
 
-    inflation_radius_m = 4.0
+    inflation_radius_m = 2.0
     inflation_radius_c = inflation_radius_m / cell2Meter
 
     start = [0,0]
     goal = [90,90]
 
-    def __init__(self, map, max_speed, cell_to_meter, start, goal ):
-
-        self.start = start
-        self.goal = goal
-
+    def __init__( self, max_speed, resolution, crash_radius, inflation_radius ):
         self.max_speed = max_speed
+        self.cell2Meter =  1 / resolution
 
-        self.map = map
+        self.crash_radius_m = crash_radius
+        self./crash_radius_c = self.crash_radius_m / self.cell2Meter
+
+        self.inflation_radius_m = inflation_radius
+        self.inflation_radius_c = self.inflation_radius_m / self.cell2Meter
+
+    def update_map( map_in ):     
+        self.map = map_in
+
+
+    def estimate_travel_costs( self, start, goals ):
         self.time = np.ones( np.shape(self.map ) )*-1
         self.speed = np.ones( np.shape(self.map ) )*self.max_speed
         
@@ -48,6 +55,50 @@ class FMM(object):
             for j in range(0, np.size( self.map, 1) ):
                 if self.map[i][j] > 0:
                     self.speed[i][j] = 0.0
+
+        fm2.displayMap()
+        inflateWalls_to_crashRadius()
+        fm2.displayMap()
+        inflateWalls_to_inflationRadius()
+
+        self.start = start
+        costs = []
+        for goal in goals:
+            self.goal = goal
+            wavePropagation()
+            cost = self.time[ goal[0] ][ goal[1] ] # wave propagation puts out times
+            costs.append( cost ) 
+        return costs
+
+    def get_path( self, start, goal ):
+
+        self.time = np.ones( np.shape(self.map ) )*-1
+        self.speed = np.ones( np.shape(self.map ) )*self.max_speed
+        
+        self.cSet = np.zeros( np.shape( self.map ) )
+        self.oSet = np.zeros( np.shape( self.map ) )
+        self.fScore = np.zeros( np.shape( self.map ) )
+
+        oVec = []
+
+        for i in range(0, np.size( self.map, 0) ):
+            for j in range(0, np.size( self.map, 1) ):
+                if self.map[i][j] > 0:
+                    self.speed[i][j] = 0.0
+
+        fm2.displayMap()
+        inflateWalls_to_crashRadius()
+        fm2.displayMap()
+        inflateWalls_to_inflationRadius()
+        fm2.displayMap()
+
+
+        self.start = start
+        self.goal = goal
+        wavePropagation()
+
+        path = findPath()
+        return path
 
     def findPath(self, start, goal):
          

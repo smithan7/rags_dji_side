@@ -30,7 +30,7 @@
    </node>
 
    <node name="rags_dji_side" pkg="rags_dji_side" type="rags_dji_side.py" output="screen">
-	   <param name="USE_RAGS" type="bool" value="True" />
+   <param name="USE_RAGS" type="bool" value="True" />
    </node>
 
 </launch>

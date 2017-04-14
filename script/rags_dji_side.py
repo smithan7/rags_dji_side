@@ -22,14 +22,9 @@ import math
 	
 
 def main():
-
-	use_rags = False
-	
+	use_rags = rospy.get_param("USE_RAGS")
 	rags_Q = rags_quad( use_rags )	
-
-
 	rospy.spin()
-
 
 if __name__ == "__main__":
     main()
