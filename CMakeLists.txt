@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(rags_dji_side)
 
+find_package(catkin REQUIRED COMPONENTS
+   roscpp
+   rospy
+   std_msgs
+)
+
 catkin_package()
 
 include_directories(
@@ -14,4 +20,9 @@ catkin_install_python(PROGRAMS script/rags_dji_side.py
 install(DIRECTORY launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
+
+
+
+
+
 

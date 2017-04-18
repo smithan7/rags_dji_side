@@ -2,7 +2,6 @@
 
 from utils import *
 from rags_quad import rags_quad
-from fmm import FMM
 
 from dji_sdk.dji_drone import DJIDrone
 import dji_sdk.msg 
@@ -18,13 +17,12 @@ from dji_sdk.msg import RCChannels
 import time
 import sys
 import math
-	
-	
-
-def main():
-	use_rags = rospy.get_param("USE_RAGS")
-	rags_Q = rags_quad( use_rags )	
-	rospy.spin()
 
 if __name__ == "__main__":
-    main()
+	#rospy.init_node('rags_dji_side', anonymous=False)
+	drone = DJIDrone()
+	use_rags = rospy.get_param( '~use_rags' )	
+	print("use rags: ", use_rags)	
+	rags_Q = rags_quad( drone, use_rags )
+	
+	rospy.spin()

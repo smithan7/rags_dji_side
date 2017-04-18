@@ -4,32 +4,22 @@
 import math
 
 def GPS_to_local( lati, longti, origin_lati, origin_longti): # from lat/lon to quads local map in meters
-	C_EARTH = 6378137.0
-	dlati = lati-origin_lati
-	dlongti= longti-origin_longti
-	x = dlati * C_EARTH
-	y = dlongti * C_EARTH * math.cos(lati / 2.0 + origin_lati / 2.0)
+	d = distance_from_a_to_b( origin_lati, origin_longti, lati, longti )
+	b = heading_from_a_to_b( origin_lati, origin_longti, lati, longti )
+
+	x = -d*math.sin(b)
+	y = d*math.cos(b)
 
 	return [x, y]
 
 def local_to_GPS(x, y, origin_lati, origin_longti): # from quads local map in meters to lat/lon
 	C_EARTH = 6378137.0
 	dlati = x / C_EARTH
-	lati = d_lati + origin_lati
+	lati = dlati + origin_lati
 	dlongti = y / ( C_EARTH * math.cos(lati / 2.0 + origin_lati / 2.0) )
 	longti = dlongti + origin_longti
 
 	return [lati, longti]
-
-def local_to_map( x, y, offset_x, offset_y, resolution ): # from quads local map in meters to gmapping's map
-	ix = (x-offset_x) / resolution
-	iy = (y-offset_y) / resolution
-	return [ix, iy]
-
-def map_to_local( ix, iy, offset_x, offset_y, resolution ): # from gmapping map to quads map in meters
-	x = ix * resolution + offset_x
-	y = iy * resolution + offset_y
-	return [x, y]
 
 def quaternions_to_RPY( q ):
 	roll  = math.atan2(2.0 * (q[3] * q[2] + q[0] * q[1]) , 1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2]) )
@@ -49,10 +39,8 @@ def heading_from_a_to_b( a_lat, a_lon, b_lat, b_lon ):
 		    * math.cos(lat2) * math.cos(diffLong))
 
 	initial_bearing = math.atan2(x, y)
-	initial_bearing = math.degrees(initial_bearing)
-	compass_bearing = (initial_bearing + 360) % 360
 
-	return compass_bearing
+	return initial_bearing
 
 def distance_from_a_to_b( a_lat, a_lon, b_lat, b_lon ):
 	R = 6378137.0 # radius of the earth in meters
