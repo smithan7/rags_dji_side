@@ -87,11 +87,11 @@ class rags_quad:
 		self.RAGS_query_time = rospy.get_time()
 
 	def publish_edge_costs( self, costs ):
-		cost_str = ""
-		for cost in costs:
-			cost_str += "%0.6f," % cost
-		print( "publishing edge costs: %s", cost_str )
-		#edge_cost_publisher.publish( cost_str )  convert to Edge_Costs.msg
+		report = Edge_Costs()
+		report.costs = costs
+		report.indices = self.vertices_to_scan_indices
+		report.my_vertex_index = self.my_RAGS_vertex
+		edge_cost_publisher.publish( report ) #  convert to Edge_Costs.msg
 
 	def query_RAGS( self ):
 		if rospy.get_time() - self.RAGS_query_time > self.RAGS_query_interval:
