@@ -2,7 +2,6 @@
 
 from utils import *
 from mapping import Mapping
-from planner import Planner
 from navigation import Navigation, Loc
 
 from dji_sdk.dji_drone import DJIDrone
@@ -66,11 +65,9 @@ class rags_quad:
 			print("Startin A* Node")
 
 		self.USE_RAGS = use_rags
-		print "going into mapping"
-		cellsPerMeter = 1.0
-		self.my_mapping = Mapping( 400.0, 400.0, cellsPerMeter )
-		self.my_planner = Planner( cellsPerMeter )
-		self.my_navigation = Navigation( 5 ) # max speed of the quad
+		
+		self.my_mapping = Mapping( 400.0, 400.0, 1.0 )
+		self.my_navigation = Navigation( 1.0 ) # max speed of the quad
 
 		# initialize drone
 		self.drone = drone
@@ -130,7 +127,7 @@ class rags_quad:
 				self.drone.velocity_control(1,vx,vy,vz,vw)
 			else:
 				self.state = "reporting_costs"
-				edge_costs = self.my_planner.estimate_travel_costs( self.cLoc, self.vertices_to_scan_locs, self.my_mapping.my_map, self.my_mapping.origin_x, self.my_mapping.origin_y )
+				edge_costs = self.my_mapping.estimate_travel_costs( self.cLoc, self.vertices_to_scan_locs )
 				self.publish_edge_costs( edge_costs )
 				self.state = "waiting for travel vertex"
 
@@ -139,7 +136,7 @@ class rags_quad:
 	
 				gLoc = Loc( [gg_x, gg_y, self.goal_alt, heading_from_a_to_b( self.my_lat, self.my_lon, self.goal_lat, self.goal_lon )] )
 
-				travel_path = self.my_planner.get_path( self.cLoc, gLoc, self.my_mapping.my_map )
+				travel_path = self.my_mapping.get_path( self.cLoc, gLoc )
 				self.my_navigation.set_wp_list( travel_path )
 				self.state = "travelling to vertex"
 

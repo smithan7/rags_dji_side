@@ -25,12 +25,11 @@ class Mapping(object):
 	free = 255
 	unknown = 127
 
-	cellsPerMeter = 10.0
-
+	cellsPerMeter = 1.0
 	
 	def __init__( self, width, height, cellsPerMeter ):
 
-		self.my_map = 127 * np.ones( (int(width * cellsPerMeter), int(height * cellsPerMeter) ), np.dtype(np.uint8) )
+		self.my_map = self.unknown * np.ones( (int(width * cellsPerMeter), int(height * cellsPerMeter) ), np.dtype(np.uint8) )
 		self.occ = 0.5 * np.ones( np.shape( self.my_map ) )
 		self.width = width * cellsPerMeter
 		self.height = height * cellsPerMeter
@@ -111,11 +110,14 @@ class Mapping(object):
 			#print "ppx, ppy: ", ppx, ", ", ppy
 			angle += scan.angle_increment
 			
+			self.min_scan_dist = float("inf")
 			if r > scan.range_min and r < scan.range_max:
 				# scan hit an obstacle, probably
 				self.occ[ppx][ppy] = self.bayes_update(self.occ[ppx][ppy], 0.55)
 				if self.occ[ppx][ppy] > 0.8:
 					self.add_obstacle_to_map([ppx, ppy])
+				if r < self.min_scan_dist:
+					self.min_scan_dist = r
 					
 			# line iterator from min to end - 1 with free else
 			pixels = self.createLineIterator( np.asarray([m_x, m_y]), np.asarray([ppx, ppy]), self.occ )
@@ -126,9 +128,7 @@ class Mapping(object):
 				if self.occ[ppx][ppy] < 0.1:
 					self.clear_obstacle_on_map([ppx, ppy])
 				
-		cv2.namedWindow("my map", cv2.WINDOW_NORMAL)
-		cv2.imshow("my map", self.my_map )
-		cv2.waitKey( 10 )
+			self.display_map()
 
 	def add_obstacle_to_map( self, point ):
 		cv2.circle( self.my_map, (point[0], point[1]), 2, self.obstacle, -1)
@@ -165,6 +165,8 @@ class Mapping(object):
 
 		if path == -1:
 			return []
+
+		self.display_path_over_map( path )		
 
 		locs = []
 		for p in path:
@@ -261,8 +263,8 @@ class Mapping(object):
 		
 	def displayMap( self ):
 
-		cv2.namedWindow("fm2 Map", cv2.WINDOW_NORMAL)
-		cv2.imshow("fm2 Map", self.my_map)
+		cv2.namedWindow("Map", cv2.WINDOW_NORMAL)
+		cv2.imshow("Map", self.my_map)
 		cv2.waitKey( 10 )
     
 	def displayPath_over_map( self, path ):
