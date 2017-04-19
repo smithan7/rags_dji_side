@@ -9,6 +9,8 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 
 from utils import *
+from State import State
+from navigation import Loc
 
 class Mapping(object):
 
@@ -26,6 +28,9 @@ class Mapping(object):
 	unknown = 127
 
 	cellsPerMeter = 1.0
+
+
+	display_map_timer = 0.0
 	
 	def __init__( self, width, height, cellsPerMeter ):
 
@@ -39,38 +44,27 @@ class Mapping(object):
 
 		rospy.Subscriber("/scan", LaserScan, self.callback_scan)
 		rospy.Subscriber("/dji_sdk/odometry", Odometry, self.callback_odom)
-		#rospy.Subscriber("/zed/odom", Odometry, self.callback_odom)
 
 	def callback_odom(self, data):
 		
-		self.odom_x = data.pose.pose.position.x
-		self.odom_y = data.pose.pose.position.y
-		self.my_alt = data.pose.pose.position.z
-		
-		# update my position in the local frame
+		if data.pose.pose.position.z < 5.0:
+			return			
 
-		[self.map_x, self.map_y] = self.world_to_map( [self.odom_x, self.odom_y] )
-		
-		if self.my_alt > 5.0:
-			self.odom_init = True
+		self.odom_init = True
 
 		# get my heading
 		q = [data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w ]
 		[self.my_heading, garbage, trash] = quaternions_to_RPY( q )
 
-	def world_to_map( self, point ):
-		#print "point: " , point
-		#print "cells2meters: " , self.cellsPerMeter
-		#print "origin: " , self.origin_x, ", " , self.origin_y
 
+	def update_loc(self, data):
+		# update my position in the local frame
+		[self.map_x, self.map_y] = self.world_to_map( [data[0], data[1] ] )
+
+	def world_to_map( self, point ):
+		
 		px = int( round( point[1] * self.cellsPerMeter ) + self.origin_y )
 		py = int( round( point[0] * self.cellsPerMeter ) + self.origin_x )
-
-		#print "map_shape: ", np.shape( self.my_map )
-
-		#print "px/y: ", px, ", ", py
-
-		#print "back?: ", self.back_to_world( [px, py] )
 
 		return [px, py]
 
@@ -85,8 +79,6 @@ class Mapping(object):
 			print "waiting on odom"			
 			return		
 		
-		o_x = self.odom_x
-		o_y = self.odom_y
 		h = self.my_heading
 		m_x = self.map_x
 		m_y = self.map_y
@@ -95,40 +87,43 @@ class Mapping(object):
 
 		# if end point is between min and max then assume obstacle
 		angle = h + scan.angle_min
-		for r in scan.ranges:
+		self.min_scan_dist = float("inf")
+		self.max_scan_dist = -float("inf")
+		for i, r in enumerate(scan.ranges):
 
-			if math.isnan(r):
+			if math.isnan(r) or i % 10 != 0:
 				angle += scan.angle_increment
 				continue
-							
+		
 			# get point scan ends
-			px = o_x + r * math.cos( angle )
-			py = o_y + r * math.sin( angle )
+			ppx = int( round( float(m_x) - r * self.cellsPerMeter * math.sin( angle ) ) )
+			ppy = int( round( float(m_y) + r * self.cellsPerMeter * math.cos( angle ) ) ) 
 
-			#print "px, py, r, angle: ", px, ", ", py, ", ", r, ", ", angle
-			[ppx, ppy] = self.world_to_map( [px, py] )
-			#print "ppx, ppy: ", ppx, ", ", ppy
 			angle += scan.angle_increment
-			
-			self.min_scan_dist = float("inf")
-			if r > scan.range_min and r < scan.range_max:
+			if r > scan.range_min and r <= scan.range_max:
 				# scan hit an obstacle, probably
 				self.occ[ppx][ppy] = self.bayes_update(self.occ[ppx][ppy], 0.55)
 				if self.occ[ppx][ppy] > 0.8:
 					self.add_obstacle_to_map([ppx, ppy])
+					#a = 0
 				if r < self.min_scan_dist:
 					self.min_scan_dist = r
+				if r > self.max_scan_dist:
+					self.max_scan_dist = r
 					
 			# line iterator from min to end - 1 with free else
 			pixels = self.createLineIterator( np.asarray([m_x, m_y]), np.asarray([ppx, ppy]), self.occ )
-			
 			for pixel in pixels[:-1]:
-				[ppx, ppy] = pixel				
+				[ppx, ppy] = pixel
+				ppx = int(ppx)
+				ppy = int(ppy)				
 				self.occ[ppx][ppy] = self.bayes_update(self.occ[ppx][ppy], 0.45)
 				if self.occ[ppx][ppy] < 0.1:
 					self.clear_obstacle_on_map([ppx, ppy])
-				
-			self.display_map()
+
+		if rospy.get_time() - self.display_map_timer > 1.0:
+			self.display_map_timer = rospy.get_time()				
+			#self.display_map()
 
 	def add_obstacle_to_map( self, point ):
 		cv2.circle( self.my_map, (point[0], point[1]), 2, self.obstacle, -1)
@@ -142,9 +137,6 @@ class Mapping(object):
 
 
 	def estimate_travel_costs( self, s, goals):
-		self.my_map = my_map
-		self.origin_x = origin_x
-		self.origin_y = origin_y
 		start = self.world_to_map( [s.x, s.y] )
 		
 		costs = []
@@ -155,9 +147,7 @@ class Mapping(object):
 
 		return costs
 
-	def get_path( self, s, g, mp ):
-
-		self.my_map = mp
+	def get_path( self, s, g ):
 		start = self.world_to_map( [s.x, s.y] )
 		goal = self.world_to_map( [g.x, g.y] )
 
@@ -215,7 +205,7 @@ class Mapping(object):
 
 			nbrs = self.getNbrs( current )
 			for nbr in nbrs:
-				if self.my_map[nbr.x, nbr.y] != self.obstacle and not self.inList( c_set, nbr):
+				if self.my_map[nbr.y][nbr.x] != self.obstacle and not self.inList( c_set, nbr):
 					if not self.inList(o_set, nbr):
 						nbr.g = current.g + self.heuristic( current, nbr )
 						nbr.f = nbr.g +  epsilon * self.heuristic( nbr, goal )
@@ -236,7 +226,7 @@ class Mapping(object):
 	
 		for x,y in zip(nx, ny):
 			n = State([c.x + x, c.y+y])
-			if n.x > -1 and n.x < self.width and n.y > -1 and n.y < self.height and self.my_map[n.x,n.y] != self.obstacle:
+			if n.x > -1 and n.x < self.width and n.y > -1 and n.y < self.height and self.my_map[n.y][n.x] != self.obstacle:
 				nbrs.append( n )
 		return nbrs
 
@@ -261,35 +251,32 @@ class Mapping(object):
 	def heuristic( self, a, b ):
 		return math.sqrt( pow(float(a.x-b.x),2) + pow(float(a.y-b.y),2) )
 		
-	def displayMap( self ):
+	def display_map( self ):
+
+		display = np.empty_like( self.my_map )
+		np.copyto( display, self.my_map )
+
+		cv2.circle( display, (int(self.map_x), int(self.map_y) ), 1, 200, -1)
+		
 
 		cv2.namedWindow("Map", cv2.WINDOW_NORMAL)
-		cv2.imshow("Map", self.my_map)
+		cv2.imshow("Map", display)
 		cv2.waitKey( 10 )
     
-	def displayPath_over_map( self, path ):
+	def display_path_over_map( self, path ):
 
-		display = np.zeros( (len(self.speed), len(self.speed[0]), 3), np.uint8)
-		for i in range(0, np.size( self.my_map, 0) ):
-			for j in range(0, np.size( self.my_map, 1) ):
-				if self.my_map[i][j] == 255:
-					display[i][j][0] = 0
-					display[i][j][1] = 0
-					display[i][j][2] = 0
-				else:
-					display[i][j][0] = 255
-					display[i][j][1] = 255
-					display[i][j][2] = 255
-
+		display = np.empty_like( self.my_map )
+		np.copyto( display, self.my_map )
+		
 		for p in path:
-			cv2.circle( display, (round(p[1]), round(p[0])), 2, (0,0,255), -1)
+			cv2.circle( display, (int(round(p[0])), int(round(p[1]))), 1, 200, -1)
 
-		cv2.circle( display, (path[0,0], path[0,1]), 5, (0,0,255), -1)
-		cv2.circle( display, (path[-1,0], path[-1,1]), 5, (0,0,255), -1)
-
-		cv2.namedWindow("fm2 path over map", cv2.WINDOW_NORMAL)
-		cv2.imshow("fm2 path over map", display)
-		cv2.waitKey(10)
+		cv2.circle( display, (int(path[0][0]), int(path[0][1])), 3, 200, -1)
+		cv2.circle( display, (int(path[-1][0]), int(path[-1][1])), 3, 50, -1)
+				
+		cv2.namedWindow("Path over map", cv2.WINDOW_NORMAL)
+		cv2.imshow("Path over map", display)
+		cv2.waitKey( 10 )
 
 	def createLineIterator(self, P1, P2, img):
 		"""

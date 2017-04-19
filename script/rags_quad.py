@@ -46,10 +46,15 @@ class rags_quad:
 	status_report_time = 0.00
 	status_report_interval = 3.0
 
+	update_plan_time = 0.0 
+	update_plan_interval = 1.0
+
 	my_RAGS_vertex = 0
 	goal_RAGS_vertex = -1
 	vertices_to_scan_locs = []
 	vertices_to_scan_indices = []
+
+	min_range = 0.0
 
 	state = "waiting for scan vertices"
 	# states for tracking current tasks
@@ -66,7 +71,7 @@ class rags_quad:
 
 		self.USE_RAGS = use_rags
 		
-		self.my_mapping = Mapping( 400.0, 400.0, 1.0 )
+		self.my_mapping = Mapping( 400.0, 400.0, 4.0 )
 		self.my_navigation = Navigation( 1.0 ) # max speed of the quad
 
 		# initialize drone
@@ -75,7 +80,6 @@ class rags_quad:
 		
 		rospy.Subscriber("/dji_sdk/odometry", Odometry, self.callback_odom)
 		rospy.Subscriber("/dji_sdk/global_position", GlobalPosition, self.callback_gps)
-		rospy.Subscriber("/dji_sdk/rc_channels", RCChannels, self.callback_rc)
 
 		# from rags algorithm side		
 		rospy.Subscriber("/edges_to_scan", Scan_Goals, self.vertices_to_scan_callback)
@@ -91,7 +95,7 @@ class rags_quad:
 		report.costs = costs
 		report.indices = self.vertices_to_scan_indices
 		report.my_vertex_index = self.my_RAGS_vertex
-		edge_cost_publisher.publish( report ) #  convert to Edge_Costs.msg
+		self.edge_cost_publisher.publish( report )
 
 	def query_RAGS( self ):
 		if rospy.get_time() - self.RAGS_query_time > self.RAGS_query_interval:
@@ -123,8 +127,12 @@ class rags_quad:
 		if self.state == "scanning vertices": # am I scanning edges
 			#print "at: ", self.state
 			if not self.my_navigation.complete( self.cLoc ):
-				[vx, vy, vz, vw] = self.my_navigation.nav( self.cLoc )
-				self.drone.velocity_control(1,vx,vy,vz,vw)
+				if self.my_mapping.min_scan_dist > self.min_range:
+					[vx, vy, vz, vw] = self.my_navigation.nav( self.cLoc )
+					#print "v: ", [vx, vy, vz, vw]
+					self.drone.velocity_control(1,vx,vy,vz,vw)	
+				else:
+					self.drone.velocity_control(1,0.0,0.0,self.cLoc.z,self.cLoc.w)	
 			else:
 				self.state = "reporting_costs"
 				edge_costs = self.my_mapping.estimate_travel_costs( self.cLoc, self.vertices_to_scan_locs )
@@ -133,19 +141,25 @@ class rags_quad:
 
 		elif self.state == "planning travel to vertex":
 				[gg_y, gg_x] = GPS_to_local( self.goal_lat, self.goal_lon, self.origin_lat, self.origin_lon)
-	
 				gLoc = Loc( [gg_x, gg_y, self.goal_alt, heading_from_a_to_b( self.my_lat, self.my_lon, self.goal_lat, self.goal_lon )] )
 
 				travel_path = self.my_mapping.get_path( self.cLoc, gLoc )
 				self.my_navigation.set_wp_list( travel_path )
 				self.state = "travelling to vertex"
 
-		elif self.state == "travelling to vertex":
+		if self.state == "travelling to vertex":
 			#print "at: ", self.state
+			if( rospy.get_time() - self.update_plan_time > self.update_plan_interval ):
+				self.update_plan_time = rospy.get_time()
+				self.state = "planning travel to vertex"
+
 			if not self.my_navigation.complete( self.cLoc ):
-				[vx, vy, vz, vw] = self.my_navigation.nav( self.cLoc )
-				#print "v: ", [vx, vy, vz, vw]
-				self.drone.velocity_control(1,vx,vy,vz,vw)				
+				if self.my_mapping.min_scan_dist > self.min_range:
+					[vx, vy, vz, vw] = self.my_navigation.nav( self.cLoc )
+					#print "v: ", [vx, vy, vz, vw]
+					self.drone.velocity_control(1,vx,vy,vz,vw)	
+				else:
+					self.drone.velocity_control(1,0.0,0.0,self.cLoc.z,self.cLoc.w)				
 			else:
 				self.state = "waiting for scan vertices"
 				print "travelled to vertex # " , self.goal_RAGS_vertex
@@ -154,9 +168,6 @@ class rags_quad:
 			
 
 	def callback_odom(self, data):
-		# update my position in the local frame
-		#self.my_local_x = data.pose.pose.position.x
-		#self.my_local_y = data.pose.pose.position.y
 		self.cLoc.z = data.pose.pose.position.z
 
 		# get my heading
@@ -164,6 +175,7 @@ class rags_quad:
 		[self.cLoc.w, trash, garbage] = quaternions_to_RPY( q )
 
 	def callback_gps(self, data):
+
 		if self.origin_lat == -1 and self.origin_lon == -1:
 			self.origin_lat = data.latitude
 			self.origin_lon = data.longitude
@@ -173,6 +185,8 @@ class rags_quad:
 		# move to my local frame!
 		[self.cLoc.y, self.cLoc.x] = GPS_to_local( self.my_lat, self.my_lon, self.origin_lat, self.origin_lon)
 		
+		self.my_mapping.update_loc( [self.cLoc.x, self.cLoc.y] )
+		
 		# call action server
 		self.action_server()
 		# check in with RAGS alg
@@ -181,12 +195,6 @@ class rags_quad:
 		#print "loc update: ", [ self.cLoc.x , self.cLoc.y, self.cLoc.z, self.cLoc.w ]
 		#print("got lat/lon: ", data.latitude, " / ", data.longitude )
 		
-	def callback_rc(self, data):
-		#print("got rc roll / pitch: ", data.roll, " / ", data.pitch )
-		#print("got rc yaw / throttle: ", data.yaw, " / ", data.throttle )
-		#print("got rc mode: ", data.mode )
-		a = 7.0
-	
 	def vertex_to_travel_callback( self, vertex ):	
 		# this takes in 1 waypoint and converts it to local
 		# it is then converted to map and 

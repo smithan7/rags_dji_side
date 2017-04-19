@@ -8,7 +8,7 @@ class Navigation(object):
 	"""description of class"""
 
 	max_speed = 1.0	
-	max_rate = 20.0
+	max_rate = 15.0
 	wp_list = []
 	wp_yaw_thresh = 10.0
 	wp_dist_3_thresh = 5.0
@@ -53,8 +53,8 @@ class Navigation(object):
 		if abs( self.ew ) > pi / 2 or abs( self.ez ) > 5: 
 			vx = max(-self.max_speed/4.0, min( vx, self.max_speed/4.0 ) )
 			vy = max(-self.max_speed/4.0, min( vy, self.max_speed/4.0 ) )
-			vz = max(-self.max_speed*2.0, min( vz, self.max_speed*2.0 ) ) 
-			vw = max(-2*self.max_rate, min( vw, 2*self.max_rate ) )
+			vz = max(-self.max_speed, min( vz, self.max_speed ) ) 
+			vw = max(-self.max_rate, min( vw, self.max_rate ) )
 		elif abs( self.ew ) > pi / 4 or abs( self.ez ) > 2: 
 			vx = max(-self.max_speed/2.0, min( vx, self.max_speed/2.0 ) )
 			vy = max(-self.max_speed/2.0, min( vy, self.max_speed/2.0 ) )
@@ -70,20 +70,51 @@ class Navigation(object):
 		return [ vx, vy, vz, vw]
 		
 	def set_final_vel( self, c, g ):
+		pi = 3.141592654
+
+		vx = 0.5*(g.x - c.x) + 0.1*(g.x - c.x - self.ex)
+		vy = -0.5*( g.y - c.y ) - 0.1*(g.y - c.y - self.ey)
+		vz = 2.0*( g.z-c.z ) + 0.1*(g.z - c.z - self.ez)
+		
+		self.ex = g.x - c.x
+		self.ey = g.y - c.y
+		self.ez - g.z - c.z
+
+		yaw = math.atan2( self.ey, -self.ex ) + pi
+		# dji works 0 -> 2 pi
+		if yaw < 0.0:
+			yaw += 2.0*pi
+		# rollover problem
+		
+		if yaw > 0.0 and yaw < pi:
+			if abs( yaw + 2*pi - c.w ) < abs( yaw - c.w ):	
+				yaw += 2.0*pi
+		else:
+			if abs( yaw - 2*pi - c.w ) < abs( yaw - c.w ):	
+				yaw -= 2.0*pi
+
+		vw = 200*( yaw - c.w ) + 0.1*(yaw - c.w - self.ew)		
+		self.ew = yaw - c.w
+
+		# pointed the right way at the right alt before moving fast
+		if abs( self.ew ) > pi / 2 or abs( self.ez ) > 5: 
+			vx = max(-self.max_speed/4.0, min( vx, self.max_speed/4.0 ) )
+			vy = max(-self.max_speed/4.0, min( vy, self.max_speed/4.0 ) )
+			vz = max(-self.max_speed, min( vz, self.max_speed ) ) 
+			vw = max(-self.max_rate, min( vw, self.max_rate ) )
+		elif abs( self.ew ) > pi / 4 or abs( self.ez ) > 2: 
+			vx = max(-self.max_speed/2.0, min( vx, self.max_speed/2.0 ) )
+			vy = max(-self.max_speed/2.0, min( vy, self.max_speed/2.0 ) )
+			vz = max(-self.max_speed, min( vz, self.max_speed ) ) 
+			vw = max(-self.max_rate, min( vw, self.max_rate ) )
+		else:
+			vx = max(-self.max_speed, min( vx, self.max_speed ) )
+			vy = max(-self.max_speed, min( vy, self.max_speed ) )
+			vz = max(-self.max_speed, min( vz, self.max_speed ) ) 
+			vw = max(-self.max_rate, min( vw, self.max_rate ) )
+			#print "v: ", [vx, vy, vz]
+
 		d = math.sqrt( pow( c.x-g.x,2) + pow( c.y-g.y,2) )
-		vx = 0.5*( g.x - c.x ) / d * self.max_speed
-		vy = -0.5*( g.y - c.y ) / d * self.max_speed
-		vz = 2*( g.z-c.z )
-
-		#print "set_vel_x: 0.5*(", c.x, " - ", g.x, ") / " , d, " * ", self.max_speed, " = ", vx
-		#print "set_vel_y: 0.5*(", g.y, " - ", c.y, ") / " , d, " * ", self.max_speed, " = ", vy
-
-		vw = 10*( g.w - c.w )
-
-		vx = max(-self.max_speed, min( vx, self.max_speed ) )
-		vy = max(-self.max_speed, min( vy, self.max_speed ) )
-		vz = max(-self.max_speed, min( vz, self.max_speed ) ) 
-
 		if d < 2*self.max_speed:
 			vx *= d / (2*self.max_speed)
 			vy *= d / (2*self.max_speed)
