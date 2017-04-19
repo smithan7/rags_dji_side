@@ -28,7 +28,7 @@ class Mapping(object):
 	unknown = 127
 
 	cellsPerMeter = 1.0
-
+	obstacle_radius = 2.0
 
 	display_map_timer = 0.0
 	
@@ -126,7 +126,8 @@ class Mapping(object):
 			#self.display_map()
 
 	def add_obstacle_to_map( self, point ):
-		cv2.circle( self.my_map, (point[0], point[1]), 2, self.obstacle, -1)
+		l = int( math.ceil( self.obstacle_radius * cellsPerMeter ) )
+		cv2.circle( self.my_map, (point[0], point[1]), l, self.obstacle, -1)
 
 	def clear_obstacle_on_map( self, point ):
 		cv2.circle( self.my_map, (point[0], point[1]), 1, self.free, -1)
