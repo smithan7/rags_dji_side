@@ -13,7 +13,7 @@ def GPS_to_local( lati, longti, origin_lati, origin_longti): # from lat/lon to q
 	return [x, y]
 
 def local_to_GPS(x, y, origin_lati, origin_longti): # from quads local map in meters to lat/lon
-	C_EARTH = 6378137.0
+	C_EARTH = 6378136.6
 	dlati = x / C_EARTH
 	lati = dlati + origin_lati
 	dlongti = y / ( C_EARTH * math.cos(lati / 2.0 + origin_lati / 2.0) )
@@ -43,7 +43,7 @@ def heading_from_a_to_b( a_lat, a_lon, b_lat, b_lon ):
 	return initial_bearing
 
 def distance_from_a_to_b( a_lat, a_lon, b_lat, b_lon ):
-	R = 6378137.0 # radius of the earth in meters
+	R = 6378136.6 # radius of the earth in meters
 
 	lat1 = math.radians(a_lat)
 	lon1 = math.radians(a_lon)

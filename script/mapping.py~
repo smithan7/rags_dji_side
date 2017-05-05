@@ -29,7 +29,7 @@ class Mapping(object):
 	unknown = 127
 
 	cellsPerMeter = 1.0
-	obstacle_radius = 2.0
+	obstacle_radius = 3.0
 
 	display_map_timer = 0.0
 	display_map_interval = 1.0
@@ -51,8 +51,7 @@ class Mapping(object):
 
 	def callback_odom(self, data):
 		self.odom_z = data.pose.pose.position.z
-		if self.odom_z < 2.0:
-			self.odom_init = False
+		if self.odom_z < 5.0:
 			return			
 
 		self.odom_init = True
@@ -93,53 +92,51 @@ class Mapping(object):
 		empty = np.zeros( np.shape( self.occ ) )
 
 		# if end point is between min and max then assume obstacle
-		scan.angle_min = -0.959931
-		scan.angle_max = 0.959931
-		scan.angle_increment = 1.91986 / float( len(scan.ranges) )
 		angle = h + scan.angle_min
 		self.min_scan_dist = float("inf")
 		self.max_scan_dist = -float("inf")
 		for i, r in enumerate(scan.ranges):
 
-			if math.isnan(r) or i % 4 != 0 or math.isinf(r):
+			if math.isnan(r):# or math.isinf(r):# or i % 10 != 0:
 				angle += scan.angle_increment
 				continue
 
+			angle += scan.angle_increment
+			if math.isinf(r):
+				r = 20.0
+			
 			# get point scan ends
 			ppx = int( round( float(m_x) - r * self.cellsPerMeter * math.sin( angle ) ) )
 			ppy = int( round( float(m_y) + r * self.cellsPerMeter * math.cos( angle ) ) ) 
-			angle += scan.angle_increment
 
+			
 			if r > 3.0 and r < 20.0:
 				
 				# scan hit an obstacle, probably
-				self.occ[ppx][ppy] = self.bayes_update(self.occ[ppx][ppy], 0.54)
-				if self.occ[ppx][ppy] > 0.65:
+				self.occ[ppx][ppy] = self.bayes_update(self.occ[ppx][ppy], 0.575)
+				if self.occ[ppx][ppy] > 0.8:
 					self.add_obstacle_to_map([ppx, ppy])
 					#a = 0
 				if r < self.min_scan_dist:
 					self.min_scan_dist = r
 				if r > self.max_scan_dist:
 					self.max_scan_dist = r
-
-				#ppx = int( round( float(m_x) - (r * self.cellsPerMeter - 1) * math.sin( angle ) ) )
-				#ppy = int( round( float(m_y) + (r * self.cellsPerMeter - 1) * math.cos( angle ) ) ) 
 			
 			# line iterator from min to end - 1 with free else
 			pixels = self.createLineIterator( np.asarray([m_x, m_y]), np.asarray([ppx, ppy]), self.occ )
-			for pixel in pixels:
+			for pixel in pixels[:-1]:
 				[ppx, ppy] = pixel
 				ppx = int(ppx)
 				ppy = int(ppy)				
-				self.occ[ppx][ppy] = self.bayes_update(self.occ[ppx][ppy], 0.485)#0.4935)
-				if self.occ[ppx][ppy] < 0.4:
+				self.occ[ppx][ppy] = self.bayes_update(self.occ[ppx][ppy], 0.425)
+				if self.occ[ppx][ppy] < 0.2:
 					self.clear_obstacle_on_map([ppx, ppy])
 		
 			#print "min / max: ", self.min_scan_dist , ", ", self.max_scan_dist
 
 		if rospy.get_time() - self.display_map_timer > self.display_map_interval:
 			self.display_map_timer = rospy.get_time()				
-		#	self.display_map()
+			#self.display_map()
 
 	def add_obstacle_to_map( self, point ):
 		l = int( math.ceil( self.obstacle_radius * self.cellsPerMeter ) )
@@ -273,7 +270,7 @@ class Mapping(object):
 		display = np.empty_like( self.my_map )
 		np.copyto( display, self.my_map )
 
-		cv2.circle( display, (int(self.map_x), int(self.map_y) ), int(2.0 * self.cellsPerMeter), 200, -1)
+		cv2.circle( display, (int(self.map_x), int(self.map_y) ), 1, 200, -1)
 		
 
 		cv2.namedWindow("Map", cv2.WINDOW_NORMAL)

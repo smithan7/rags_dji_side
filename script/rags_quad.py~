@@ -162,7 +162,7 @@ class rags_quad:
 				else:
 					# change 6 of 6 for test mode 
 					a = 0	
-					#self.drone.velocity_control(1,0.0,0.0,0.0,0.0)				
+					#self.drone.velocity_control(1,0.0,0.0,self.cLoc.z,self.cLoc.w)				
 			else:
 				self.state = "waiting for scan vertices"
 				print "travelled to vertex # " , self.goal_RAGS_vertex

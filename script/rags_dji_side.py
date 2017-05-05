@@ -19,10 +19,11 @@ import sys
 import math
 
 if __name__ == "__main__":
-	#rospy.init_node('rags_dji_side', anonymous=False)
-	drone = DJIDrone()
-	use_rags = rospy.get_param( '~use_rags' )	
-	print("use rags: ", use_rags)	
-	rags_Q = rags_quad( drone, use_rags )
+	
+	rospy.init_node('rags_dji_side', anonymous=False)
+	#drone = DJIDrone()
+	#use_rags = rospy.get_param( '~use_rags' )	
+	#rags_Q = rags_quad( drone )
+	rags_Q = rags_quad()
 	
 	rospy.spin()
