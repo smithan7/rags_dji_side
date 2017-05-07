@@ -47,9 +47,9 @@ class rags_quad:
 	status_report_interval = 3.0
 
 	update_plan_time = 0.0 
-	update_plan_interval = 1.0
+	update_plan_interval = 2.0
 
-	my_RAGS_vertex = 0
+	my_RAGS_vertex = -1
 	goal_RAGS_vertex = -1
 	vertices_to_scan_locs = []
 	vertices_to_scan_indices = []
@@ -63,16 +63,16 @@ class rags_quad:
 	waiting_on_RAGS_publisher = rospy.Publisher('/waiting_on_RAGS', Query_RAGS, queue_size=10)
 
 	# change 0 of 6 for test mode
-	def __init__(self):
-	#def __init__(self, drone):
+	#def __init__(self):
+	def __init__(self, drone):
 
 		self.my_mapping = Mapping( 400.0, 400.0, 4.0 )
-		self.my_navigation = Navigation( 1.0 ) # max speed of the quad
+		self.my_navigation = Navigation( 2.0 ) # max speed of the quad
 
 
 		# initialize drone, test 1,2 of 6 for test mode
-		#self.drone = drone
-		#self.drone.request_sdk_permission_control() #Request to obtain control
+		self.drone = drone
+		self.drone.request_sdk_permission_control() #Request to obtain control
 		
 		rospy.Subscriber("/dji_sdk/odometry", Odometry, self.callback_odom)
 		rospy.Subscriber("/dji_sdk/global_position", GlobalPosition, self.callback_gps)
@@ -115,11 +115,11 @@ class rags_quad:
 		if( rospy.get_time() - self.status_report_time > self.status_report_interval ):
 			self.status_report_time = rospy.get_time()
 			print "in action server at state: ", self.state , ", " , [self.my_lat, self.my_lon, self.goal_lat, self.goal_lon ]
+			if self.state == "travelling to vertex":
+				d = distance_from_a_to_b( self.my_lat, self.my_lon, self.goal_lat, self.goal_lon )
+				b = heading_from_a_to_b( self.my_lat, self.my_lon, self.goal_lat, self.goal_lon )
 
-			d = distance_from_a_to_b( self.my_lat, self.my_lon, self.goal_lat, self.goal_lon )
-			b = heading_from_a_to_b( self.my_lat, self.my_lon, self.goal_lat, self.goal_lon )
-
-			print "dist to goal: ", d*math.cos( b ), " , ", d*math.sin( b ), " meters"
+				print "dist to goal: ", d*math.cos( b ), " , ", d*math.sin( b ), " meters"
 			
 		if self.state == "scanning vertices": # am I scanning edges
 			#print "at: ", self.state
@@ -128,11 +128,11 @@ class rags_quad:
 					[vx, vy, vz, vw] = self.my_navigation.nav( self.cLoc )
 					#print "v: ", [vx, vy, vz, vw]
 					# change 3 of 6 for test mode
-					#self.drone.velocity_control(1,vx,vy,vz,vw)
+					self.drone.velocity_control(1,vx,vy,vz,vw)
 				else:
 					# change 4 of 6 for test mode
 					a = 0					
-					#self.drone.velocity_control(1,0.0,0.0,0.0,0.0)	
+					self.drone.velocity_control(1,0.0,0.0,0.0,0.0)	
 			else:
 				self.state = "reporting_costs"
 				edge_costs = self.my_mapping.estimate_travel_costs( self.cLoc, self.vertices_to_scan_locs )
@@ -145,24 +145,24 @@ class rags_quad:
 
 				travel_path = self.my_mapping.get_path( self.cLoc, gLoc )
 				self.my_navigation.set_wp_list( travel_path )
+				self.update_plan_time = rospy.get_time()
 				self.state = "travelling to vertex"
 
 		if self.state == "travelling to vertex":
 			#print "at: ", self.state
-			if( rospy.get_time() - self.update_plan_time > self.update_plan_interval ):
-				self.update_plan_time = rospy.get_time()
-				self.state = "planning travel to vertex"
-
 			if not self.my_navigation.complete( self.cLoc ):
 				if self.my_mapping.min_scan_dist > self.min_range:
 					[vx, vy, vz, vw] = self.my_navigation.nav( self.cLoc )
 					#print "v: ", [vx, vy, vz, vw]
-					# change 5 of 6 for test mode					
-					#self.drone.velocity_control(1,vx,vy,vz,vw)	
+					# change 5 of 6 for test mode
+					self.drone.velocity_control(1,vx,vy,vz,vw)
+					if( rospy.get_time() - self.update_plan_time > self.update_plan_interval ):
+						self.update_plan_time = rospy.get_time()
+						self.state = "planning travel to vertex"
 				else:
 					# change 6 of 6 for test mode 
-					a = 0	
-					#self.drone.velocity_control(1,0.0,0.0,0.0,0.0)				
+					#a = 0	
+					self.drone.velocity_control(1,0.0,0.0,0.0,0.0)				
 			else:
 				self.state = "waiting for scan vertices"
 				print "travelled to vertex # " , self.goal_RAGS_vertex

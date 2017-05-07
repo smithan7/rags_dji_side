@@ -7,11 +7,18 @@ import rospy
 class Navigation(object):
 	"""description of class"""
 
-	max_speed = 1.0	
+	max_speed = 10.0 # doesn't matter set in init	
 	max_rate = 15.0
 	wp_list = []
 	wp_yaw_thresh = 0.175
 	wp_dist_3_thresh = 5.0
+
+	kp_xy = 1.0
+	kd_xy = 0.0
+	kp_z = 1.0
+	kd_z = 5.0
+	kp_w = 200.0
+	kd_w = 100.0
 
 	ex = 0.0
 	ey = 0.0
@@ -21,28 +28,43 @@ class Navigation(object):
 	def __init__( self, max_speed ):
 		self.max_speed = max_speed
 
+	def constrain_yaw(self, y ):
+		pi = 3.141592654		
+		if y < 0.0:
+			y += 2.0*pi
+		if y > 2.0 * pi:
+			y -= 2.0*pi
+		return y
+
 	def set_vel( self, c, g ):
  		
 		pi = 3.141592654
 
-		vx = 0.5*(g.x - c.x) + 0.1*(g.x - c.x - self.ex)
-		vy = -0.5*( g.y - c.y ) - 0.1*(g.y - c.y - self.ey)
-		vz = 2.0*( g.z-c.z ) + 0.1*(g.z - c.z - self.ez)
+		vx = self.kp_xy*(g.x - c.x) + self.kd_xy*(g.x - c.x - self.ex)
+		vy = -1.0 * ( self.kp_xy*( g.y - c.y ) + self.kd_xy*(g.y - c.y - self.ey) )
+		vz = self.kp_z*( g.z-c.z ) + self.kd_z*(g.z - c.z - self.ez)
 		
 		self.ex = g.x - c.x
 		self.ey = g.y - c.y
 		self.ez - g.z - c.z
 
 		yaw = math.atan2( self.ey, -self.ex ) + pi
+		#print "yaw: ", yaw*180.0/pi
+
 		# dji works 0 -> 2 pi
-		if yaw < 0.0:
-			yaw += 2.0*pi
-		
+		yaw = self.constrain_yaw( yaw )
+		my_heading_constrained = self.constrain_yaw( c.w )		
+		#print "yaw constrained: ", yaw*180.0/pi
+
 		# rollover problem
-		if yaw > c.w - pi and yaw < 2*pi:
+		if yaw > c.w + pi:
+		#	print "threshold: ", (c.w+pi)*180.0/pi
 			yaw -= 2*pi
 
-		vw = 200*( yaw - c.w ) + 0.1*(yaw - c.w - self.ew)		
+		#print "yaw with rolloever fixed: ", yaw*180.0/pi
+		#print "my heading: ", c.w*180.0/pi
+
+		vw = self.kp_w*( yaw - c.w ) + self.kd_w*(yaw - c.w - self.ew)		
 		self.ew = yaw - c.w
 
 		# pointed the right way at the right alt before moving fast
@@ -68,7 +90,7 @@ class Navigation(object):
 			if d < 2*self.max_speed:
 				vx *= d / (2*self.max_speed)
 				vy *= d / (2*self.max_speed)
-
+		
 		return [ vx, vy, vz, vw]		
 
 	def complete( self, c ):
@@ -102,9 +124,8 @@ class Navigation(object):
 
 	def at_point( self, c, g ):
 		d = math.sqrt( pow( c.x-g.x,2) + pow( c.y-g.y,2) + pow( c.z-g.z,2) )
-		yd = c.w - g.w
-
-		if d < self.wp_dist_3_thresh and yd < self.wp_yaw_thresh:
+		
+		if d < self.wp_dist_3_thresh and abs(self.ew) < self.wp_yaw_thresh:
 			return True
 		else:
 			return False

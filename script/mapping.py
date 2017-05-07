@@ -35,6 +35,9 @@ class Mapping(object):
 	display_map_interval = 1.0
 	waiting_on_odom_timer = 0.0
 	waiting_on_odom_interval = 1.0
+
+	min_scan_dist = 0.0
+	max_scan_dist = 0.0
 	
 	def __init__( self, width, height, cellsPerMeter ):
 
@@ -115,8 +118,8 @@ class Mapping(object):
 				# scan hit an obstacle, probably
 				self.occ[ppx][ppy] = self.bayes_update(self.occ[ppx][ppy], 0.54)
 				if self.occ[ppx][ppy] > 0.65:
-					self.add_obstacle_to_map([ppx, ppy])
-					#a = 0
+					#self.add_obstacle_to_map([ppx, ppy])
+					a = 0
 				if r < self.min_scan_dist:
 					self.min_scan_dist = r
 				if r > self.max_scan_dist:
