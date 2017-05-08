@@ -49,6 +49,9 @@ class rags_quad:
 	update_plan_time = 0.0 
 	update_plan_interval = 2.0
 
+	get_dji_control_time = 0.0
+	get_dji_control_interval = 1.0
+
 	my_RAGS_vertex = -1
 	goal_RAGS_vertex = -1
 	vertices_to_scan_locs = []
@@ -100,7 +103,8 @@ class rags_quad:
 			query = Query_RAGS()
 			query.my_lat = self.my_lat
 			query.my_lon = self.my_lon
-			query.my_vertex_index = self.my_RAGS_vertex			
+			query.my_vertex_index = self.my_RAGS_vertex
+			print self.state		
 			if self.state == "waiting for scan vertices":
 				print "Waiting on RAGS vertices to scan"
 				query.request_type = 0
@@ -125,10 +129,10 @@ class rags_quad:
 			#print "at: ", self.state
 			if not self.my_navigation.complete( self.cLoc ):
 				if self.my_mapping.min_scan_dist > self.min_range:
-					[vx, vy, vz, vw] = self.my_navigation.nav( self.cLoc )
+					[vx, vy, vz, vw] = self.my_navigation.scan( self.cLoc )
 					#print "v: ", [vx, vy, vz, vw]
 					# change 3 of 6 for test mode
-					self.drone.velocity_control(1,vx,vy,vz,vw)
+					self.drone.velocity_control(1,0.0,0.0,vz,vw)
 				else:
 					# change 4 of 6 for test mode
 					a = 0					
@@ -189,12 +193,17 @@ class rags_quad:
 		[self.cLoc.y, self.cLoc.x] = GPS_to_local( self.my_lat, self.my_lon, self.origin_lat, self.origin_lon)
 		
 		self.my_mapping.update_loc( [self.cLoc.x, self.cLoc.y] )
+
+		if rospy.get_time() - self.get_dji_control_time > self.get_dji_control_interval:
+			self.get_dji_control_time = rospy.get_time()
+			self.drone.request_sdk_permission_control() #Request to obtain control
 		
 		# call action server
 		self.action_server()
 		# check in with RAGS alg
 		self.query_RAGS()
 
+			
 		#print "loc update: ", [ self.cLoc.x , self.cLoc.y, self.cLoc.z, self.cLoc.w ]
 		#print("got lat/lon: ", data.latitude, " / ", data.longitude )
 		
@@ -234,17 +243,17 @@ class rags_quad:
 			print("Not ready to recieve vertices to scan")
 			return
 
-		if len( data.indices ) == 0:
+		if len( data.indices ) >= 0:
 			print "No edges given to scan, requesting nav goal"
 			self.state = "waiting for travel vertex"
 
 		self.vertices_to_scan_locs = []
 		for i in range(0,len(data.indices) ):
 			bearing = heading_from_a_to_b( self.my_lat, self.my_lon, data.lats[i], data.lons[i] )
-			self.vertices_to_scan_locs.append( Loc( [self.my_local_x, self.my_local_y, self.goal_alt, bearing] ) )
-			self.vertices_to_scan_indices.append( data.indice[i] )
+			self.vertices_to_scan_locs.append( Loc( [self.my_mapping.map_x, self.my_mapping.map_y, self.goal_alt, bearing] ) )
+			self.vertices_to_scan_indices.append( data.indices[i] )
 
-		self.my_navigation.set_wp_list( self.vertices_to_scan_locs )
+		#self.my_navigation.set_wp_list( self.vertices_to_scan_locs )
 
 		self.state = "scanning vertices"
 

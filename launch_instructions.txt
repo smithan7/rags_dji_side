@@ -1,23 +1,29 @@
 
 
 #### in terminal 1 launch
+source devel/setup.bash
 roslaunch zed_wrapper zed.launch 
 
 #### in terminal 2 launch
+source devel/setup.bash
 roslaunch dji_sdk sdk_manifold.launch
 
 #### in terminal 3 launch for RAGS
 
-roslaunch rags_ros rags_planner_dji.launch 
+source devel/setup.bash
+rags_ros rags_planner_dji.launch 
 
 !!!!!!!!!!!!!!!!!!!!!!   OR  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 for A Star
-rags_alg_side rags_alg_side_aStar.launch
+source devel/setup.bash
+roslaunch rags_alg_side rags_alg_side_aStar.launch
 
 #### in terminal 4 launch
+source devel/setup.bash
 roslaunch rags_dji_side rags_dji_side_test_without_gmapping.launch
 
 #### in terminal 5 launch
+source devel/setup.bash
 rosbag record -o hardware1 /scan /dji_sdk/global_position /dji_sdk/odometry /edge_costs /edges_to_scan /waiting_on_RAGS /waypoint_to_travel
 

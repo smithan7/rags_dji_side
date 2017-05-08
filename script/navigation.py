@@ -93,6 +93,37 @@ class Navigation(object):
 		
 		return [ vx, vy, vz, vw]		
 
+	def set_scan_vel( self, c, g ):
+ 		
+		pi = 3.141592654
+
+		vz = self.kp_z*( g.z-c.z ) + self.kd_z*(g.z - c.z - self.ez)
+		
+		self.ex = g.x - c.x
+		self.ey = g.y - c.y
+		self.ez - g.z - c.z
+
+		yaw = math.atan2( self.ey, -self.ex ) + pi
+		#print "yaw: ", yaw*180.0/pi
+
+		# dji works 0 -> 2 pi
+		yaw = self.constrain_yaw( yaw )
+		my_heading_constrained = self.constrain_yaw( c.w )		
+		#print "yaw constrained: ", yaw*180.0/pi
+
+		# rollover problem
+		if yaw > c.w + pi:
+		#	print "threshold: ", (c.w+pi)*180.0/pi
+			yaw -= 2*pi
+
+		#print "yaw with rolloever fixed: ", yaw*180.0/pi
+		#print "my heading: ", c.w*180.0/pi
+
+		vw = self.kp_w*( yaw - c.w ) + self.kd_w*(yaw - c.w - self.ew)		
+		self.ew = yaw - c.w
+		
+		return [ 0.0, 0.0, vz, vw]
+
 	def complete( self, c ):
 		self.get_next_wp( c )
 		if len( self.wp_list ) == 0:
@@ -111,16 +142,42 @@ class Navigation(object):
 		
 		vels = []
 		if len( self.wp_list ) >= 1:
+			#print "setting nav vels" 
 			vels = self.set_vel( self.cLoc, self.wp_list[ 0 ] )
 		else:
 			vels = [0.0,0.0,0.0,0.0]
 
 		return vels
 
+	def scan( self, c ):
+		self.cLoc = c
+		
+		if self.at_scan_angle():
+			self.get_next_scan_goal()
+		
+		vels = []
+		if len( self.wp_list ) >= 1:
+			vels = self.set_scan_vel( self.cLoc, self.wp_list[ 0 ] )
+		else:
+			vels = [0.0,0.0,0.0,0.0]
+
+		return vels
+
+	def get_next_scan_goal( self ):
+		# always navigate to first wp, so check through list until I find a point I am not at yet		
+		while len( self.wp_list ) > 0 and self.at_scan_angle():
+			del self.wp_list[0]
+
 	def get_next_wp( self, c ):
 		# always navigate to first wp, so check through list until I find a point I am not at yet		
 		while len( self.wp_list ) > 0 and self.at_point( c, self.wp_list[0] ):
 			del self.wp_list[0]
+
+	def at_scan_angle( self ):
+		if abs(self.ew) < self.wp_yaw_thresh:
+			return True
+		else:
+			return False
 
 	def at_point( self, c, g ):
 		d = math.sqrt( pow( c.x-g.x,2) + pow( c.y-g.y,2) + pow( c.z-g.z,2) )
