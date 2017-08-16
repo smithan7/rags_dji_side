@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from utils import *
-from rags_quad import rags_quad
+from quad import quad
 
 from dji_sdk.dji_drone import DJIDrone
 import dji_sdk.msg 
@@ -19,11 +19,10 @@ import sys
 import math
 
 if __name__ == "__main__":
-	
-	#rospy.init_node('rags_dji_side', anonymous=False)
+
+	nw_corner = rospy.get_param( '~nw_corner' )
+	se_corner = rospy.get_param( '~se_corner' )
 	drone = DJIDrone()
-	use_rags = rospy.get_param( '~use_rags' )	
-	rags_Q = rags_quad( drone )
-	#rags_Q = rags_quad()
-	
+	Q = quad( drone, nw_corner, se_corner )
+		
 	rospy.spin()

@@ -1,0 +1,6 @@
+<launch>
+   <arg name="use_greedy" default="true"/>
+   <node name="dji_bridge" pkg="dji_bridge" type="dji_bridge.py" output="screen">
+	   <param name="use_greedy" value="$( arg use_greedy )" />
+   </node>
+</launch>
