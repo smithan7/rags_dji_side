@@ -87,13 +87,14 @@ class quad:
 			report.goal_latitude = self.goal_global_location.latitude # goal location
 			report.local_x = self.current_local_location.local_x
 			report.local_y = self.current_local_location.local_y
-
+			report.local_goal_x = self.goal_local_location.local_x
+			report.local_goal_y = self.goal_local_location.local_y
 
 			if self.state == "waiting for travel path":
 				report.waiting = True
 				report.travelling = False
 			elif self.state == "travelling":
-				report.headingaiting = False
+				report.waiting = False
 				report.travelling = True
 
 			if self.state == "in emergency stop":
@@ -121,14 +122,14 @@ class quad:
 
 	def travel_path_callback( self, travel_path_msg ):
 
-		if len(travel_path_msg.longitudes) > 0:
+		if len(travel_path_msg.local_xs) > 0:
 			# this takes in a sequence of Locs (x,y,z,w) and saves them as the current path
 			path = []
-			for i in range(0,len(travel_path_msg.longitudes)):
-				wp = Loc(travel_path_msg.longitudes[i], travel_path_msg.latitudes[i], travel_path_msg.altitudes[i], travel_path_msg.headings[i])
+			for i in range(0,len(travel_path_msg.local_xs)):
+				wp = Local_Loc(travel_path_msg.local_xs[i], travel_path_msg.local_ys[i], travel_path_msg.altitudes[i], travel_path_msg.headings[i])
 				path.append(wp)
 
-			self.goal_location = path[-1]
+			self.goal_local_location = path[-1]
 			self.navigation.set_wp_list( path )
 			# only switch to travelling mode if emergency stop is off
 			if self.state != "in emergency stop":
@@ -139,7 +140,7 @@ class quad:
 			self.status_report_time = rospy.get_time()
 			print "DJI_Bridge::in action server at state: ", self.state , ", " , self.current_global_location.longitude, " / ", self.current_global_location.latitude, ", ", self.current_local_location.local_x, " / ", self.current_local_location.local_y
 			if self.state == "travelling":
-				print("dist to goal: ", self.goal_global_location.longitude - self.current_global_location.longitude, " , ", self.goal_global_location.latitude - self.current_local_location.latitude, " degrees")
+				print("dist to goal: ", abs(self.goal_local_location.local_x - self.current_local_location.local_x), " , ", abs(self.goal_local_location.local_y - self.current_local_location.local_y), " (m)")
 
 	def action_server( self ):
 		if( rospy.get_time() - self.heartbeat_time > self.max_heartbeat_interval ):
@@ -151,9 +152,9 @@ class quad:
 
 		if self.state == "travelling":
 			# I am actively travelling along my path
-			if not self.my_navigation.complete():
+			if not self.navigation.complete():
 				# I am not at the end of my path, keep planning
-				[vx, vy, vz, vw] = self.my_navigation.nav()
+				[vx, vy, vz, vw] = self.navigation.nav()
 				#print "action server::travelling:: v: ", [vx, vy, vz, vw]
 				#self.drone.velocity_control(1,vx,vy,vz,vw)
 			else:

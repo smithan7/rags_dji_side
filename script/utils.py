@@ -15,6 +15,15 @@ class Local_Loc(object):
 		self.altitude = z
 		self.heading = w
 
+def euclid2d(a,b):
+	d = math.sqrt((a.local_x-b.local_x)**2 + (a.local_y-b.local_y)**2)
+	return d
+
+
+def euclid3d(a,b):
+	d = math.sqrt((a.local_x-b.local_x)**2 + (a.local_y-b.local_y)**2 + (a.altitude-b.altitude)**2)
+	return d
+
 def GPS_to_local( a, origin): # from lat/lon to quads local map in meters
 	d = distance_from_a_to_b( origin, a )
 	b = heading_from_a_to_b( origin, a )

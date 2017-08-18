@@ -88,9 +88,9 @@ class Navigation(object):
  		
 		pi = 3.141592654
 
-		dx = g.x - self.cLoc.local_x
-		dy = g.y - self.cLoc.local_y
-		dz = g.z - self.cLoc.altitude
+		dx = g.local_x - self.cLoc.local_x
+		dy = g.local_y - self.cLoc.local_y
+		dz = g.altitude - self.cLoc.altitude
 
 		vx = self.kp_xy*(dx) + self.kd_xy*(dx - self.ex)
 		vy = -1.0 * ( self.kp_xy*( dy ) + self.kd_xy*(dy - self.ey) )
@@ -100,24 +100,24 @@ class Navigation(object):
 		self.ey = dy
 		self.ez - dz
 
-		yaw = math.atan2( self.ey, -self.ex ) + pi
+		g_yaw = math.atan2( self.ey, -self.ex ) + pi
 		#print "yaw: ", yaw*180.0/pi
 
 		# dji works 0 -> 2 pi
-		yaw = self.constrain_yaw( yaw )
-		my_heading_constrained = self.constrain_yaw( c.w )		
+		g_yaw = self.constrain_yaw( g_yaw )
+		self.cLoc.heading = self.constrain_yaw( self.cLoc.heading )		
 		#print "yaw constrained: ", yaw*180.0/pi
 
 		# rollover problem
-		if yaw > c.w + pi:
-		#	print "threshold: ", (c.w+pi)*180.0/pi
-			yaw -= 2*pi
+		if g_yaw > self.cLoc.heading + pi:
+		#	print "threshold: ", (self.cLoc.heading+pi)*180.0/pi
+			g_yaw -= 2*pi
 
-		#print "yaw with rolloever fixed: ", yaw*180.0/pi
-		#print "my heading: ", c.w*180.0/pi
+		#print "g_yaw with rolloever fixed: ", g_yaw*180.0/pi
+		#print "my heading: ", self.cLoc.heading*180.0/pi
 
-		vw = self.kp_w*( yaw - c.w ) + self.kd_w*(yaw - c.w - self.ew)		
-		self.ew = yaw - c.w
+		vw = self.kp_w*( g_yaw - self.cLoc.heading ) + self.kd_w*(g_yaw - self.cLoc.heading - self.ew)		
+		self.ew = g_yaw - self.cLoc.heading
 
 		# pointed the right way at the right alt before moving fast
 		if abs( self.ew ) > pi / 2 or abs( self.ez ) > 5: 
@@ -164,7 +164,7 @@ class Navigation(object):
 		# set vels
 		if len( self.wp_list ) >= 1:
 			#print "setting nav vels" 
-			vels = self.set_vel( self.cLoc, self.wp_list[ 0 ] )
+			vels = self.set_vel( self.wp_list[ 0 ] )
 			return vels
 		else:
 			vels = [0.0,0.0,0.0,0.0]
@@ -172,7 +172,7 @@ class Navigation(object):
 
 	def get_next_wp( self ):
 		# always navigate to first wp, so check through list until I find a point I am not at yet		
-		while len( self.wp_list ) > 0 and self.at_point_xyz( self.cLoc, self.wp_list[0] ):
+		while len( self.wp_list ) > 0 and self.at_point_xyz( self.wp_list[0] ):
 			del self.wp_list[0]
 
 	def get_current_wp( self ):
@@ -181,6 +181,8 @@ class Navigation(object):
 			if self.at_point_xyz(self.wp_list[wp_i]):
 				return wp_i + 1
 			wp_i = wp_i - 1
+		# couldn't find point I am near, go to beginning		
+		return 0
 
 	def at_point_xy( self, g ):
 		# get distance between two points
