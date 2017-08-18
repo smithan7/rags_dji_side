@@ -8,10 +8,12 @@ import numpy as np
 import math
 import time
 
-from utils import Loc, GPS
+from utils import *
 
 class Navigation(object):
 	"""description of class"""
+
+	cLoc = Local_Loc(0.0,0.0,0.0,0.0)
 
 	max_speed = 0.0 # doesn't matter set in init	
 	max_rate = 15.0
@@ -35,47 +37,41 @@ class Navigation(object):
 	height_deg = 0.0
 	width_meters = 0.0
 	height_meters = 0.0
-	meters_per_cell.x = 0.0
-	meters_per_cell.y = 0.0
+	meters_per_cell_x = 0.0
+	meters_per_cell_y = 0.0
 
-	def __init__( self, ne_in, sw_in ):
-		self.ne_corner = ne_in
-		self.sw_corner = sw_in
+	def __init__( self, nw_in, se_in ):
+		self.origin = Global_Loc(nw_in.longitude, nw_in.latitude)
 
-		self.width_deg = ne_in.lon - sw_in.lon
-		self.height_deg = ne_in.lat - sw_in.lat
+		[self.width_meters, self.height_meters] = GPS_to_local(nw_in, se_in)
+		self.width_meters = abs(self.width_meters)
+		self.height_meters = abs(self.height_meters)
+		print "origin: ", self.origin.longitude, ", ", self.origin.latitude
+		print "size: ", self.width_meters, ", ", self.height_meters
 
-		[self.width_meters, self.height_meters] = GPS_to_Local(nw_in.y, nw_in.x, se_in.y, se_in.x)
-		self.width_meters = math.abs(self.width_meters)
-		self.height_meters = math.abs(self.height_meters)
-
-		self.meters_per_deg.x = self.width_meters / self.width_deg
-		self.meters_per_deg.y = self.height_meters / self.height_deg
+		print("DJI_Bridge::Navigation Initialized")
 
 	def global_to_local(self, g):
 		# convert from gps to local frame
-		px = (g.longitude - self.sw_corner.longitude) / self.width_deg
-		py = (g.latitude - self.sw_corner.latitude) / self.height_deg
-
-		l.x = px*self.meters_per_deg.x
-		l.y = py*self.meters_per_deg.y
-		return l
+		[x,y] = GPS_to_local( g, self.origin)		
+		return [abs(x), abs(y)]
 
 	def update_location(self, l):
 		# in from quad
-		[self.cLoc.x, self.cLoc.y ]  = self.global_to_local(l)
+		[self.cLoc.local_x, self.cLoc.local_y ]  = self.global_to_local(l)
+		return [self.cLoc.local_x, self.cLoc.local_y ]
 
 	def update_alt( self, cz ):
 		# in from quad
-		self.cLoc.z = cz
+		self.cLoc.altitude = cz
 
 	def update_heading(self, ch ):
 		# in from quad
-		self.cLoc.w = ch
+		self.cLoc.heading = ch
 
 	def get_local_loc():
 		# send back to quad
-		return ([self.cLoc.x, self.cLoc.y])
+		return ([self.cLoc.local_x, self.cLoc.local_y])
 
 	def constrain_yaw(self, y ):
 		pi = 3.141592654		
@@ -92,9 +88,9 @@ class Navigation(object):
  		
 		pi = 3.141592654
 
-		dx = g.x - self.cLoc.x
-		dy = g.y - self.cLoc.y
-		dz = g.z - self.cLoc.z
+		dx = g.x - self.cLoc.local_x
+		dy = g.y - self.cLoc.local_y
+		dz = g.z - self.cLoc.altitude
 
 		vx = self.kp_xy*(dx) + self.kd_xy*(dx - self.ex)
 		vy = -1.0 * ( self.kp_xy*( dy ) + self.kd_xy*(dy - self.ey) )

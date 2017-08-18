@@ -3,12 +3,17 @@
 
 import math
 
-class Loc(object):
-	def __init__( self, lon, lat, alt, heading ):
+class Global_Loc(object):
+	def __init__( self, lon, lat):
 		self.longitude = lon
 		self.latitude = lat
-		self.altitude = alt
-		self.heading = heading	
+		
+class Local_Loc(object):
+	def __init__(self, x,y,z,w):
+		self.local_x = x
+		self.local_y = y
+		self.altitude = z
+		self.heading = w
 
 def GPS_to_local( a, origin): # from lat/lon to quads local map in meters
 	d = distance_from_a_to_b( origin, a )
@@ -63,3 +68,5 @@ def distance_from_a_to_b( a, b ):
 
 	distance = R * c # in meters
 	return distance
+
+
