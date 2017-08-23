@@ -27,8 +27,8 @@ def euclid3d(a,b):
 def GPS_to_local( a, origin): # from lat/lon to quads local map in meters
 	d = distance_from_a_to_b( origin, a )
 	b = heading_from_a_to_b( origin, a )
-	x = -d*math.sin(b)
-	y = d*math.cos(b)
+	x = d*math.cos(b)
+	y = d*math.sin(b)
 	return [x, y]
 
 def local_to_GPS(x, y, origin_lati, origin_longti): # from quads local map in meters to lat/lon

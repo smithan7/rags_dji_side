@@ -19,8 +19,12 @@ import sys
 import math
 
 if __name__ == "__main__":
-	nw_corner = [44.539847, -123.251004]#rospy.get_param( '~nw_corner' )
-	se_corner = [44.538552, -123.247446]#rospy.get_param( '~se_corner' )
+	# hardware test environment
+	#nw_corner = [44.539847, -123.251004]#rospy.get_param( '~nw_corner' )
+	#se_corner = [44.538552, -123.247446]#rospy.get_param( '~se_corner' )
+
+	nw_corner = [44.565683, -123.272974]
+	se_corner = [44.564965, -123.270456]
 
 	rospy.init_node("DJI_Bridge")
 	#drone = DJIDrone()
