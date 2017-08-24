@@ -54,7 +54,7 @@ class Navigation(object):
 	def global_to_local(self, g):
 		# convert from gps to local frame
 		[x,y] = GPS_to_local( g, self.origin)		
-		return [x, y]
+		return [x + self.width_meters, y + self.height_meters]
 
 	def update_location(self, l):
 		# in from quad
