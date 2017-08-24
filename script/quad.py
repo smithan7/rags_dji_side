@@ -186,6 +186,7 @@ class quad:
 			data.header.frame_id = "/map"
 			data.pose.pose.position.x = self.current_local_location.local_x
 			data.pose.pose.position.y = self.current_local_location.local_y
+			data.pose.pose.orientation.z = -1*data.pose.pose.orientation.z;			
 			self.odom_publisher.publish( data )
 
 	def callback_gps(self, data):
