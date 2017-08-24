@@ -15,11 +15,13 @@ class Navigation(object):
 
 	cLoc = Local_Loc(0.0,0.0,0.0,0.0)
 
-	max_speed = 0.0 # doesn't matter set in init	
+	max_speed = 0.5 # doesn't matter set in init	
 	max_rate = 15.0
+	min_alt = 10.0
 	wp_list = []
 	wp_yaw_thresh = 0.175
 	wp_dist_3_thresh = 5.0
+	wp_dist_2_thresh = 5.0
 
 	kp_xy = 1.0
 	kd_xy = 0.0
@@ -88,6 +90,8 @@ class Navigation(object):
  		
 		pi = 3.141592654
 
+		g.altitude = max(g.altitude, self.min_alt)
+
 		dx = g.local_x - self.cLoc.local_x
 		dy = g.local_y - self.cLoc.local_y
 		dz = g.altitude - self.cLoc.altitude
@@ -95,7 +99,7 @@ class Navigation(object):
 		vx = self.kp_xy*(dx) + self.kd_xy*(dx - self.ex)
 		vy = -1.0 * ( self.kp_xy*( dy ) + self.kd_xy*(dy - self.ey) )
 		vz = self.kp_z*( dz) + self.kd_z*(dz - self.ez)
-		
+
 		self.ex = dx
 		self.ey = dy
 		self.ez - dz
@@ -158,13 +162,11 @@ class Navigation(object):
 
 	def nav( self ):
 		# am I at my goal
-		if self.at_point_xyzw( self.wp_list[ 0 ] ):
-			self.get_next_wp()
-		
+
+		cwp = self.get_current_wp()
 		# set vels
-		if len( self.wp_list ) >= 1:
-			#print "setting nav vels" 
-			vels = self.set_vel( self.wp_list[ 0 ] )
+		if len( self.wp_list ) >= 1 and len( self.wp_list ) > cwp: 
+			vels = self.set_vel( self.wp_list[ cwp ] )
 			return vels
 		else:
 			vels = [0.0,0.0,0.0,0.0]
@@ -172,23 +174,24 @@ class Navigation(object):
 
 	def get_next_wp( self ):
 		# always navigate to first wp, so check through list until I find a point I am not at yet		
-		while len( self.wp_list ) > 0 and self.at_point_xyz( self.wp_list[0] ):
+		while len( self.wp_list ) > 0 and self.at_point_xyz( self.wp_list[0] ):		
 			del self.wp_list[0]
 
 	def get_current_wp( self ):
 		wp_i = len(self.wp_list)-1
 		while wp_i > 0:
-			if self.at_point_xyz(self.wp_list[wp_i]):
-				return wp_i + 1
+			if self.at_point_xy(self.wp_list[wp_i]):
+				return wp_i
 			wp_i = wp_i - 1
 		# couldn't find point I am near, go to beginning		
 		return 0
 
 	def at_point_xy( self, g ):
 		# get distance between two points
-		d = euclid2d(self.cLoc, g)
+		#d = euclid2d(self.cLoc, g)
+		d = abs(self.cLoc.local_x - g.local_x) + abs(self.cLoc.local_y - g.local_y)
 		# am I close enough to be done
-		if d < self.wp_dist_3_thresh:
+		if d < self.wp_dist_2_thresh:
 			return True
 		else:
 			return False

@@ -53,15 +53,15 @@ class quad:
 	status_publisher = rospy.Publisher('/dji_bridge_status', DJI_Bridge_Status_MSG, queue_size=10)
 	odom_publisher = rospy.Publisher('/dji_bridge_odom', Odometry, queue_size=10)
 
-	#def __init__(self, drone, nw, se):
-	def __init__(self, nw, se):
+	def __init__(self, drone, nw, se):
+	#def __init__(self, nw, se):
 		nw_corner = Global_Loc(nw[1], nw[0])
 		se_corner = Global_Loc(se[1], se[0])
 		self.navigation = Navigation( nw_corner, se_corner )
 
 		# initialize drone, test 1,2 of 6 for test mode
-		#self.drone = drone
-		#self.drone.request_sdk_permission_control() #Request to obtain control
+		self.drone = drone
+		self.drone.request_sdk_permission_control() #Request to obtain control
 		
 		# get true odom from the quad
 		rospy.Subscriber("/dji_sdk/odometry", Odometry, self.callback_odom)
@@ -109,7 +109,7 @@ class quad:
 		if( travel_speed_msg.stop ):
 			### flag to stop was thrown, IMMEDIATELY STOP!
 			self.safe_travel_speed = 0.0
-			#self.drone.velocity_control(1,0.0,0.0,0.0,0.0)
+			self.drone.velocity_control(1,0.0,0.0,0.0,0.0)
 			self.state = "in emergency stop"
 		else:
 			# set the travel speed
@@ -143,12 +143,12 @@ class quad:
 				print("dist to goal: ", abs(self.goal_local_location.local_x - self.current_local_location.local_x), " , ", abs(self.goal_local_location.local_y - self.current_local_location.local_y), " (m)")
 
 	def action_server( self ):
-		if( rospy.get_time() - self.heartbeat_time > self.max_heartbeat_interval ):
-			self.heartbeat_time = rospy.get_time()
-			# haven't heard from planner in a while, stop moving!
-			print("DJI_Bridge::action_server:: no heartbeat from planner")
-			#self.drone.velocity_control(1,0.0,0.0,0.0,0.0)
-			return
+		#if( rospy.get_time() - self.heartbeat_time > self.max_heartbeat_interval ):
+		#	self.heartbeat_time = rospy.get_time()
+		#	# haven't heard from planner in a while, stop moving!
+		#	print("DJI_Bridge::action_server:: no heartbeat from planner")
+		#	self.drone.velocity_control(1,0.0,0.0,0.0,0.0)
+		#	return
 
 		if self.state == "travelling":
 			# I am actively travelling along my path
@@ -156,16 +156,16 @@ class quad:
 				# I am not at the end of my path, keep planning
 				[vx, vy, vz, vw] = self.navigation.nav()
 				#print "action server::travelling:: v: ", [vx, vy, vz, vw]
-				#self.drone.velocity_control(1,vx,vy,vz,vw)
+				self.drone.velocity_control(1,vx,vy,vz,vw)
 			else:
 				# I have finished travelling, stop and share
 				self.state = "waiting for travel path"
-				#self.drone.velocity_control(1,0.0,0.0,0.0,0.0)	
+				self.drone.velocity_control(1,0.0,0.0,0.0,0.0)	
 			return
 
 		if self.state == "waiting for travel path": ## am I waiting
 			# yes, try not to move
-			#self.drone.velocity_control(1,0.0,0.0,0.0,0.0)	
+			self.drone.velocity_control(1,0.0,0.0,0.0,0.0)	
 			return
 
 
@@ -193,7 +193,7 @@ class quad:
 		### this constantly asks for control, if the human user allows it then it is given
 		if rospy.get_time() - self.get_dji_control_time > self.get_dji_control_interval:
 			self.get_dji_control_time = rospy.get_time()
-			#self.drone.request_sdk_permission_control() #Request to obtain control
+			self.drone.request_sdk_permission_control() #Request to obtain control
 		
 
 		# update location in navigation

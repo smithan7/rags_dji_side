@@ -26,8 +26,8 @@ if __name__ == "__main__":
 	nw_corner = [44.565683, -123.272974]
 	se_corner = [44.564965, -123.270456]
 
-	rospy.init_node("DJI_Bridge")
-	#drone = DJIDrone()
-	#Q = quad( drone, nw_corner, se_corner )
-	Q = quad( nw_corner, se_corner )	
+	#rospy.init_node("DJI_Bridge")
+	drone = DJIDrone()
+	Q = quad( drone, nw_corner, se_corner )
+	#Q = quad( nw_corner, se_corner )	
 	rospy.spin()
