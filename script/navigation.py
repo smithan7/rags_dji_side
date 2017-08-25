@@ -15,8 +15,8 @@ class Navigation(object):
 
 	cLoc = Local_Loc(0.0,0.0,0.0,0.0)
 
-	max_speed = 0.5 # doesn't matter set in init	
-	max_rate = 15.0
+	max_speed = 2.0 # doesn't matter set in init	
+	max_rate = 25.0
 	min_alt = 10.0
 	wp_list = []
 	wp_yaw_thresh = 0.175
@@ -124,12 +124,12 @@ class Navigation(object):
 		self.ew = g_yaw - self.cLoc.heading
 
 		# pointed the right way at the right alt before moving fast
-		if abs( self.ew ) > pi / 2 or abs( self.ez ) > 5: 
+		if abs( self.ew ) > pi / 4 or abs( self.ez ) > 5: 
 			vx = max(-self.max_speed/4.0, min( vx, self.max_speed/4.0 ) )
 			vy = max(-self.max_speed/4.0, min( vy, self.max_speed/4.0 ) )
 			vz = max(-self.max_speed, min( vz, self.max_speed ) ) 
 			vw = max(-self.max_rate, min( vw, self.max_rate ) )
-		elif abs( self.ew ) > pi / 4 or abs( self.ez ) > 2: 
+		elif abs( self.ew ) > pi / 8 or abs( self.ez ) > 2: 
 			vx = max(-self.max_speed/2.0, min( vx, self.max_speed/2.0 ) )
 			vy = max(-self.max_speed/2.0, min( vy, self.max_speed/2.0 ) )
 			vz = max(-self.max_speed, min( vz, self.max_speed ) ) 
@@ -142,7 +142,7 @@ class Navigation(object):
 			#print "v: ", [vx, vy, vz]
 
 		if len( self.wp_list ) == 1:
-			d = math.sqrt( pow( c.x-g.x,2) + pow( c.y-g.y,2) )
+			d = math.sqrt( pow( self.cLoc.local_x-g.local_x,2) + pow( self.cLoc.local_x-g.local_x,2) )
 			if d < 2*self.max_speed:
 				vx *= d / (2*self.max_speed)
 				vy *= d / (2*self.max_speed)
@@ -174,14 +174,15 @@ class Navigation(object):
 
 	def get_next_wp( self ):
 		# always navigate to first wp, so check through list until I find a point I am not at yet		
-		while len( self.wp_list ) > 0 and self.at_point_xyz( self.wp_list[0] ):		
+		while len( self.wp_list ) > 0 and self.at_point_xy( self.wp_list[0] ):		
 			del self.wp_list[0]
 
 	def get_current_wp( self ):
 		wp_i = len(self.wp_list)-1
 		while wp_i > 0:
 			if self.at_point_xy(self.wp_list[wp_i]):
-				return wp_i
+				del self.wp_list[0:wp_i]
+				return 0
 			wp_i = wp_i - 1
 		# couldn't find point I am near, go to beginning		
 		return 0

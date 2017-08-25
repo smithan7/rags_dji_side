@@ -121,7 +121,6 @@ class quad:
 
 
 	def travel_path_callback( self, travel_path_msg ):
-
 		if len(travel_path_msg.local_xs) > 0:
 			# this takes in a sequence of Locs (x,y,z,w) and saves them as the current path
 			path = []
