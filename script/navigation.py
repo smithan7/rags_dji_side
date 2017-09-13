@@ -48,7 +48,7 @@ class Navigation(object):
 		[self.width_meters, self.height_meters] = GPS_to_local(nw_in, se_in)
 		self.width_meters = abs(self.width_meters)
 		self.height_meters = abs(self.height_meters)
-		print "origin: ", self.origin.longitude, ", ", self.origin.latitude
+		print"origin: ", self.origin.longitude, ", ", self.origin.latitude
 		print "size: ", self.width_meters, ", ", self.height_meters
 
 		print("DJI_Bridge::Navigation Initialized")
