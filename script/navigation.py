@@ -43,20 +43,19 @@ class Navigation(object):
 	meters_per_cell_y = 0.0
 
 	def __init__( self, nw_in, se_in ):
-		self.origin = Global_Loc(nw_in.longitude, nw_in.latitude)
+		self.origin = Global_Loc(nw_in.longitude, se_in.latitude)
 
 		[self.width_meters, self.height_meters] = GPS_to_local(nw_in, se_in)
 		self.width_meters = abs(self.width_meters)
 		self.height_meters = abs(self.height_meters)
-		print"origin: ", self.origin.longitude, ", ", self.origin.latitude
-		print "size: ", self.width_meters, ", ", self.height_meters
-
+		print "DJI_Bridsge::origin: ", self.origin.longitude, ", ", self.origin.latitude
+		print "DJI_Bridge::size: ", self.width_meters, ", ", self.height_meters
 		print("DJI_Bridge::Navigation Initialized")
 
 	def global_to_local(self, g):
 		# convert from gps to local frame
 		[x,y] = GPS_to_local( g, self.origin)		
-		return [x + self.width_meters, y + self.height_meters]
+		return [x, self.height_meters - y]
 
 	def update_location(self, l):
 		# in from quad
@@ -95,6 +94,10 @@ class Navigation(object):
 		dx = g.local_x - self.cLoc.local_x
 		dy = g.local_y - self.cLoc.local_y
 		dz = g.altitude - self.cLoc.altitude
+		w = self.cLoc.heading
+
+		#print "g: ", g.local_x, ", ", g.local_y
+		#print "c: ", self.cLoc.local_x, ", ", self.cLoc.local_y
 
 		vx = self.kp_xy*(dx) + self.kd_xy*(dx - self.ex)
 		vy = -1.0 * ( self.kp_xy*( dy ) + self.kd_xy*(dy - self.ey) )
@@ -104,24 +107,36 @@ class Navigation(object):
 		self.ey = dy
 		self.ez - dz
 
-		g_yaw = math.atan2( self.ey, -self.ex ) + pi
-		#print "yaw: ", yaw*180.0/pi
+		#print "e: ", dx,", ", dy
 
+		g_yaw = math.atan2( self.ey, self.ex ) + pi/2.0
+		
 		# dji works 0 -> 2 pi
 		g_yaw = self.constrain_yaw( g_yaw )
-		self.cLoc.heading = self.constrain_yaw( self.cLoc.heading )		
-		#print "yaw constrained: ", yaw*180.0/pi
+		w = self.constrain_yaw( w )		
+		
+
 
 		# rollover problem
-		if g_yaw > self.cLoc.heading + pi:
-		#	print "threshold: ", (self.cLoc.heading+pi)*180.0/pi
-			g_yaw -= 2*pi
+		if g_yaw + 2.0*pi - w < w - g_yaw:
+			#print "cLoc heading-0: ", w*180.0/pi
+			#print "gLoc heading-0: ", g_yaw*180.0/pi
+			#print "threshold-0: ", (g_yaw + 2.0*pi - w)*180.0/pi
+			#print "threshold-1: ", (w - g_yaw)*180.0/pi
+			g_yaw += 2.0*pi
+			#print "cLoc heading-1: ", w*180.0/pi
+			#print "gLoc heading-1: ", g_yaw*180.0/pi
+		elif w + 2.0*pi - g_yaw < g_yaw - w:
+			#print "cLoc heading-2: ", w*180.0/pi
+			#print "gLoc heading-2: ", g_yaw*180.0/pi
+			#print "threshold-2: ", (w + 2.0*pi - g_yaw)*180.0/pi
+			#print "threshold-3: ", (g_yaw - w)*180.0/pi
+			g_yaw = g_yaw - 2* pi
+			#print "cLoc heading-3: ", w*180.0/pi
+			#print "gLoc heading-3: ", g_yaw*180.0/pi
 
-		#print "g_yaw with rolloever fixed: ", g_yaw*180.0/pi
-		#print "my heading: ", self.cLoc.heading*180.0/pi
-
-		vw = self.kp_w*( g_yaw - self.cLoc.heading ) + self.kd_w*(g_yaw - self.cLoc.heading - self.ew)		
-		self.ew = g_yaw - self.cLoc.heading
+		vw = self.kp_w*( g_yaw - w ) + self.kd_w*(g_yaw - w - self.ew)		
+		self.ew = g_yaw - w
 
 		# pointed the right way at the right alt before moving fast
 		if abs( self.ew ) > pi / 4 or abs( self.ez ) > 5: 
@@ -142,12 +157,12 @@ class Navigation(object):
 			#print "v: ", [vx, vy, vz]
 
 		if len( self.wp_list ) == 1:
-			d = math.sqrt( pow( self.cLoc.local_x-g.local_x,2) + pow( self.cLoc.local_x-g.local_x,2) )
+			d = math.sqrt( pow( dx,2) + pow( dy,2) )
 			if d < 2*self.max_speed:
 				vx *= d / (2*self.max_speed)
 				vy *= d / (2*self.max_speed)
 		
-		return [ vx, vy, vz, vw]		
+		return [ vy, vx, vz, vw]		
 
 	def complete( self ):
 		self.get_next_wp()
