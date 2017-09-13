@@ -31,7 +31,6 @@ if __name__ == "__main__":
 	nw_corner = [44.5394569, -123.250866]
 	se_corner = [44.538162, -123.247776]
 
-
 	#rospy.init_node("DJI_Bridge")
 	#Q = quad( nw_corner, se_corner )	
 	print("DJI_Bridge::Initializing")
